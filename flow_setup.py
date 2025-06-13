@@ -138,6 +138,11 @@ model_params = {
     "linear_solver": {"preconditioner_factory": FTHM_Solver.mass_balance_factory},
     # Control the number of fractures here.
     "num_fractures": 50,
+    # This is the simplest way to control the cell size. You can also do
+    # 'cell_size_fracture' and 'cell_size_boundary'.
+    "meshing_arguments": {"cell_size": 0.1},
+    # Control the name of the gmsh file here.
+    "meshing_kwargs": {"file_name": "mesh_2d"},
 }
 
 
