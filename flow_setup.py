@@ -133,6 +133,28 @@ else:
     model_class = BenchmarkModel
 
 
+def reset_model_state(model):
+    """Reset the model state to a clean state.
+
+    This can be useful to run several simulations with the same model (discretization
+    etc.) but, say, with different solver parameters.
+    """
+    mdg = model.mdg
+
+    num_cells = sum(sd.num_cells for sd in mdg.subdomains())
+    num_interface_cells = sum(intf.num_cells for intf in mdg.interfaces())
+
+    zeros = np.zeros(num_cells + num_interface_cells, dtype=float)
+    model.equation_system.set_variable_values(
+        values=zeros, additive=False, time_step_index=0
+    )
+    model.equation_system.set_variable_values(
+        values=zeros, additive=False, iterate_index=0
+    )
+
+    model.time_manager = pp.TimeManager(schedule=[0, 1], dt_init=1, constant_dt=True)
+
+
 model_params = {
     "solid_constants": solid_constants_2d,
     "linear_solver": {"preconditioner_factory": FTHM_Solver.mass_balance_factory},
@@ -174,6 +196,10 @@ linear_solver_opts = {
 model.params["linear_solver"].update({"options": linear_solver_opts})
 
 
+pp.run_time_dependent_model(model, {"prepare_simulation": False})
+
+# To reset the model state and run the simulation again with the same parameters:
+reset_model_state(model)
 pp.run_time_dependent_model(model, {"prepare_simulation": False})
 
 
