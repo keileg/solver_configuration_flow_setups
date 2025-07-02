@@ -70,6 +70,10 @@ class Source:
 
         x_mean = (box["xmax"] + box["xmin"]) / 2
         y_mean = (box["ymax"] + box["ymin"]) / 2
+        if self.dim == 3:
+            z_mean = (box["zmax"] + box["zmin"]) / 2
+        else:
+            z_mean = 0
 
         src_ambient = np.zeros(
             sum(sd.num_cells for sd in subdomains if sd.dim == self.nd)
@@ -85,14 +89,16 @@ class Source:
             # Domain without fractures. Put the source in the center of the domain.
             sd = subdomains[0]
             closest_cell = sd.closest_cell(
-                np.array([x_mean, y_mean, 0]).reshape((3, 1))
+                np.array([x_mean, y_mean, z_mean]).reshape((3, 1))
             )
             src_ambient[closest_cell] = 1.0
         else:
             x, y, z = np.concatenate(
                 [sd.cell_centers for sd in subdomains if sd.dim == self.nd - 1], axis=1
             )
-            source_loc = np.argmin((x - x_mean) ** 2 + (y - y_mean) ** 2)
+            source_loc = np.argmin(
+                (x - x_mean) ** 2 + (y - y_mean) ** 2 + (z - z_mean) ** 2
+            )
             src_fracture[source_loc] = 1
 
         return super().fluid_source(subdomains) + pp.ad.DenseArray(
@@ -159,7 +165,7 @@ model_params = {
     "solid_constants": solid_constants_2d,
     "linear_solver": {"preconditioner_factory": FTHM_Solver.mass_balance_factory},
     # Control the number of fractures here.
-    "num_fractures": 50,
+    "num_fractures": 5,
     # This is the simplest way to control the cell size. You can also do
     # 'cell_size_fracture' and 'cell_size_boundary'.
     "meshing_arguments": {"cell_size": 0.1},
@@ -186,11 +192,11 @@ print(f"Endpoints of the first fracture: {frac.pts[:, 0]}, {frac.pts[:, 1]}")
 linear_solver_opts = {
     # This line PETSc print the residual norm at each iteration.
     "ksp_monitor": None,
-    "ksp_type": "bcgs",  # Change the Krylov method
+    "ksp_type": "gmres",  # Change the Krylov method
     # # Change the preconditioner for interface fluxes. Jacobi is probably a bad choice,
     # # but that is not the point here.
-    "interface_darcy_flux": {"pc_type": "jacobi"},
-    "mass_balance": {"pc_type": "ilu"},
+    # "interface_darcy_flux": {"pc_type": "jacobi"},
+    # "mass_balance": {"pc_type": "ilu"},
 }
 
 model.params["linear_solver"].update({"options": linear_solver_opts})
